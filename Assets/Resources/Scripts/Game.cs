@@ -12,6 +12,7 @@ public enum Status
 public class Attack
 {
     public string name;
+    public Type type;
     public int defenderPower;
     public int attackerPower;
     public Status statusChangeDefender;
