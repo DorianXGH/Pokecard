@@ -6,24 +6,10 @@ using UnityEngine;
 public enum Type
 {
     None,
-    Normal,
-    Psy,
-    Dark,
-    Dragon,
-    Fighting,
-    Ghost,
-    Flying,
-    Poison,
-    Ground,
-    Rock,
-    Bug,
-    Steel,
-    Fire,
-    Water,
-    Grass,
-    Electric,
-    Ice,
-    Fairy
+    Mecanical,
+    Biological,
+    Elemental,
+    Mystical
 }
 
 [System.Serializable]
@@ -37,6 +23,12 @@ public class Stats
     public int Speed;
 }
 
+[System.Serializable]
+public enum Zone
+{
+    HAND, FIGHTINGZONE
+}
+
 public class Card : MonoBehaviour {
     public string cardName;
     public Stats stats;
@@ -44,7 +36,9 @@ public class Card : MonoBehaviour {
     public Type type2;
     public int attack1ID;
     public int attack2ID;
+    public Zone zone;
     public int rank;
+    public int level;
     public Status status;
     public Transform nameObject;
     public Transform attack1Object;
@@ -55,7 +49,7 @@ public class Card : MonoBehaviour {
     public Transform statsObject;
     public Transform Master;
     public Vector3 statsX;
-
+    public int pId;
 	// Use this for initialization
 	void Start () {
         nameObject.gameObject.GetComponent<TMPro.TextMeshPro>().text = cardName; // set the name
@@ -110,4 +104,57 @@ public class Card : MonoBehaviour {
 	void Update () {
 		
 	}
+    void Summon()
+    {
+        zone = Zone.FIGHTINGZONE;
+        Game g = Master.gameObject.GetComponent<Game>();
+        
+        switch (pId) // move the card from zone, it will be moved graphically by the master element
+        {
+            case 0:
+                g.hand1.Remove(gameObject);
+                g.zone1.Add(gameObject);
+                break;
+            case 1:
+                g.hand2.Remove(gameObject);
+                g.zone2.Add(gameObject);
+                break;
+            default:
+                break;
+        }
+    }
+    void OnClick()
+    {
+        if (zone == Zone.HAND)
+        {
+            Summon();
+        }
+    }
+    void AttackCard(int attackNum, GameObject card2)
+    {
+        Game g = Master.gameObject.GetComponent<Game>();
+        int attackID = (attackNum == 0)?attack1ID:attack2ID; // fonction qui à 0 associe l'id de la première attaque et à 1 celle de la deuxième
+        Attack att = g.attacks[attackID];
+        Card cd2 = card2.GetComponent<Card>();
+        bool STAB = (att.type == type1) || (att.type == type2);
+        int effectiveAtt = 1;
+        int effectiveDef = 1;
+        int effectiveDefAttacker = 1;
+        for (int i=0; i <g.typeDescs.Count; i++) // apply type specificity
+        {
+            if (g.typeDescs[i].type == att.type)
+            {
+                TypeDesc tDesc = g.typeDescs[i];
+                effectiveAtt = Mathf.CeilToInt(tDesc.att * stats.Att + tDesc.speAtt * stats.SpAtt);
+                effectiveDef = Mathf.CeilToInt(tDesc.def * cd2.stats.Def + tDesc.speDef * cd2.stats.SpDef);
+                effectiveDefAttacker = Mathf.CeilToInt(tDesc.def * stats.Def + tDesc.speDef * stats.SpDef);
+            }
+        }
+        // compute damages
+        int HPtoLose = Mathf.CeilToInt((effectiveAtt + 1f) * att.defenderPower * ((STAB) ? 1.5f : 1f) / effectiveDef);
+        int HPtoLoseAttacker = Mathf.CeilToInt((effectiveAtt + 1f) * att.attackerPower * ((STAB) ? 1.5f : 1f) / effectiveDefAttacker);
+        // apply them (checks for death will be done in the update callback)
+        cd2.stats.HP -= HPtoLose;
+        stats.HP -= HPtoLoseAttacker;
+    }
 }
